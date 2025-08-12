@@ -1,7 +1,7 @@
 [project]
 name = "claude-code-context-llemur"
 version = "2.1.0"
-description = "Add your description here"
+description = "Enhanced Context-Llemur with MARM memory layer and AI-readable code development for Claude Code"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
