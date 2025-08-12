@@ -1,0 +1,11 @@
+# Claude Code Session Configuration
+# This file should be read at the start of every coding session
+
+RULES_FILE="CLAUDE_CODE_RULES.md"
+ENFORCE_RULES_READING=true
+
+# Session checklist:
+# [ ] Read CLAUDE_CODE_RULES.md
+# [ ] Understand preserve-before-modify principle  
+# [ ] Identify specific issues only
+# [ ] Make minimal targeted fixes

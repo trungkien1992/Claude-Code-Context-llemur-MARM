@@ -1,0 +1,96 @@
+{
+  "project": {
+    "name": "claude-code-context-llemur",
+    "description": "MARM memory layer for Claude context management",
+    "version": "0.1.0"
+  },
+  "annotation_patterns": {
+    "@fetch": {
+      "description": "Documentation URL reference for immediate AI access",
+      "validation": "url",
+      "required": false,
+      "example": "@fetch https://docs.python.org/3/library/json.html",
+      "usage": "Place before imports or function definitions"
+    },
+    "@implement": {
+      "description": "Step-by-step implementation instructions for AI tools",
+      "validation": "text",
+      "required": false,
+      "max_length": 1000,
+      "example": "@implement: 1. Validate input 2. Process data 3. Return result",
+      "usage": "Place in docstrings with numbered steps"
+    },
+    "@ai-context": {
+      "description": "Additional context for AI understanding",
+      "validation": "text",
+      "required": false,
+      "max_length": 500,
+      "example": "@ai-context: Critical for MARM compliance - changing breaks Claude memory",
+      "usage": "Provide domain knowledge and constraints"
+    },
+    "@pattern": {
+      "description": "Design pattern reference with URL",
+      "validation": "pattern_name url",
+      "required": false,
+      "example": "@pattern Builder https://refactoring.guru/design-patterns/builder",
+      "usage": "Reference architectural patterns being used"
+    }
+  },
+  "validation_rules": {
+    "url_validation": {
+      "allowed_domains": [
+        "docs.python.org",
+        "click.palletsprojects.com", 
+        "github.com",
+        "gitpython.readthedocs.io",
+        "refactoring.guru"
+      ],
+      "require_https": true
+    },
+    "text_limits": {
+      "@implement": 1000,
+      "@ai-context": 500,
+      "@pattern": 200
+    }
+  },
+  "extraction_config": {
+    "file_patterns": [
+      "*.py",
+      "*.js", 
+      "*.ts",
+      "*.md"
+    ],
+    "output_formats": [
+      "markdown",
+      "json",
+      "csv"
+    ],
+    "include_line_numbers": true
+  },
+  "ci_integration": {
+    "fail_on_unresolved": false,
+    "warn_on_missing_docs": true,
+    "max_annotation_age_days": 90
+  },
+  "ide_integration": {
+    "vscode_settings": {
+      "todo-tree.general.tags": [
+        "@fetch",
+        "@implement",
+        "@ai-context", 
+        "@pattern"
+      ]
+    }
+  },
+  "examples": {
+    "function_annotation": {
+      "python": "def process_data(data):\n    \"\"\"\n    Process input data\n    \n    @fetch https://docs.python.org/3/library/json.html\n    @implement: 1. Validate format 2. Transform data 3. Return result\n    @ai-context: Used in high-throughput pipeline - optimize for speed\n    @pattern Strategy https://refactoring.guru/design-patterns/strategy\n    \"\"\""
+    },
+    "class_annotation": {
+      "python": "class DataProcessor:\n    \"\"\"\n    @fetch https://docs.python.org/3/library/abc.html\n    @ai-context: Core processing engine - changes affect entire system\n    \"\"\""
+    },
+    "import_annotation": {
+      "python": "# @fetch https://click.palletsprojects.com/en/8.1.x/api/\n# CLI framework documentation\nimport click"
+    }
+  }
+}
