@@ -60,6 +60,11 @@ def notebook():
     """Manage runtime notebook (MARM innovation)"""
     pass
 
+@main.group()
+def ai():
+    """AI development context management (Claude Code integration)"""
+    pass
+
 # === NOTEBOOK OPERATIONS ===
 # Pattern: All notebook commands follow ctx_core -> NotebookManager -> operation
 # Add similar commands: get, list, delete, export (see notebook.py:cli for examples)
@@ -137,6 +142,92 @@ def compile(name, fields):
     compilation = compiler.compile(name, fields.split(',') if fields else None)
     reseed_block = compiler.create_reseed_block(compilation)
     click.echo(reseed_block)
+
+# === AI CONTEXT OPERATIONS ===
+# Integration with Claude Code for AI-readable development
+
+@ai.command()
+@click.argument('goal')
+@click.option('--focus', help='Focus area for the session')
+def start_session(goal, focus):
+    """Start new AI development session"""
+    from src.ai_context import AIContextManager
+    
+    try:
+        from context_llemur import CtxCore
+        ctx_core = CtxCore()
+        ctx_path = ctx_core.get_active_ctx_path()
+    except ImportError:
+        click.echo("❌ context-llemur not available")
+        return
+    
+    if not ctx_path:
+        click.echo("❌ No active context. Run 'ctx new' first.")
+        return
+    
+    manager = AIContextManager(ctx_path)
+    success, message = manager.start_ai_session(goal, focus)
+    
+    if success:
+        click.echo(f"✅ {message}")
+        context = manager.prepare_claude_context()
+        click.echo("\n" + context)
+    else:
+        click.echo(f"❌ {message}")
+
+@ai.command()
+@click.argument('summary')
+@click.option('--next-steps', help='Next steps for future sessions')
+def end_session(summary, next_steps):
+    """End current AI session with summary"""
+    from src.ai_context import AIContextManager
+    
+    try:
+        from context_llemur import CtxCore
+        ctx_core = CtxCore()
+        ctx_path = ctx_core.get_active_ctx_path()
+    except ImportError:
+        click.echo("❌ context-llemur not available")
+        return
+    
+    if not ctx_path:
+        click.echo("❌ No active context")
+        return
+    
+    manager = AIContextManager(ctx_path)
+    success, message = manager.end_ai_session(summary, next_steps)
+    click.echo(f"✅ {message}" if success else f"❌ {message}")
+
+@ai.command()
+@click.option('--copy', is_flag=True, help='Copy to clipboard')
+def context(copy):
+    """Prepare context for Claude Code session"""
+    from src.ai_context import AIContextManager
+    
+    try:
+        from context_llemur import CtxCore
+        ctx_core = CtxCore()
+        ctx_path = ctx_core.get_active_ctx_path()
+    except ImportError:
+        click.echo("❌ context-llemur not available")
+        return
+    
+    if not ctx_path:
+        click.echo("❌ No active context")
+        return
+    
+    manager = AIContextManager(ctx_path)
+    context = manager.prepare_claude_context()
+    
+    click.echo(context)
+    
+    if copy:
+        try:
+            import pyperclip
+            pyperclip.copy(context)
+            click.echo("\n✅ Context copied to clipboard for Claude Code!")
+        except ImportError:
+            click.echo("\n💡 Install pyperclip: pip install pyperclip")
 
 # === ENTRY POINTS ===
 # cli_main() allows standalone execution: python main.py

@@ -11,6 +11,13 @@ Enhanced Context-Llemur with MARM's memory innovations for persistent knowledge 
 - **Markdown Export**: Documentation-ready format export
 - **Artifacts Import**: Import Claude-generated artifacts back into system
 
+### 🆕 AI-Readable Code Development (NEW!)
+- **AI Development Sessions**: Structured workflow for Claude Code collaboration
+- **Context-Aware AI Guidance**: Project-specific AI instruction patterns
+- **Session Management**: Track development goals, progress, and outcomes
+- **AI Pattern Library**: Reusable coding patterns for consistent AI guidance
+- **Seamless Claude Code Integration**: Direct clipboard integration and context preparation
+
 ### Enhanced Capabilities
 - MARM-compliant memory limits for optimal Claude compatibility
 - Comprehensive AI annotations throughout codebase
@@ -87,6 +94,13 @@ ctx compile load <name>              # Load compilation
 ctx compile delete <name>            # Delete compilation
 ctx compile export-md <name>         # Export as markdown
 ctx compile import-artifacts <file>  # Import Claude artifacts
+```
+
+### 🆕 AI Development Sessions
+```bash
+ctx ai start-session "goal" --focus area    # Start structured AI session
+ctx ai context --copy                       # Prepare context for Claude Code  
+ctx ai end-session "summary" --next-steps   # Document session outcomes
 ```
 
 ### Claude Integration
@@ -223,7 +237,32 @@ This project extends [context-llemur](https://github.com/jerpint/context-llemur)
 
 This project extends context-llemur and maintains compatibility with its licensing terms.
 
+## 🚀 AI-Readable Code Quick Start
+
+### 1. Start AI Development Session
+```bash
+ctx ai start-session "Implement user authentication API" --focus "backend"
+```
+
+### 2. Work with Claude Code
+- Context automatically prepared and formatted
+- Use the displayed context in Claude Code
+- Follow AI-readable annotation patterns
+
+### 3. Document Progress
+```bash
+ctx ai end-session "Auth API completed with JWT integration" --next-steps "Add password reset flow"
+```
+
+### 4. Share with Team
+```bash
+ctx compile export-md "auth-implementation" --output docs/sessions/auth.md
+```
+
+**📖 Complete Guide**: See [CLAUDE_CODE_QUICK_START.md](./CLAUDE_CODE_QUICK_START.md) for detailed 30-day implementation roadmap.
+
 ## 🔄 Version History
 
+- **v2.1.0**: AI-Readable Code Development with Claude Code integration and session management
 - **v2.0.0**: Enhanced MARM memory layer with markdown export and Claude artifacts import
 - **v1.0.0**: Initial MARM memory implementation
