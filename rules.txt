@@ -1,0 +1,7 @@
+## Development Rules
+
+1. Follow DRY principle - eliminate code duplication
+2. Use consistent error messaging with emojis
+3. Implement shared utilities for common patterns  
+4. Test refactoring on real codebase usage
+5. Maintain backward compatibility

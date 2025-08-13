@@ -20,6 +20,7 @@ from typing import Any, Dict, Optional
 # @fetch https://click.palletsprojects.com/en/8.1.x/
 # CLI framework for command-line interface
 import click
+from ..cli_utils import require_context_llemur, copy_to_clipboard
 
 
 class NotebookManager:
@@ -215,18 +216,9 @@ def cli():
 @cli.command()
 @click.argument("key")
 @click.argument("value")
-def add(key, value):
+@require_context_llemur
+def add(ctx_path, key, value):
     """Add entry to notebook"""
-    # Integration point: depends on ctx_core for context path resolution
-    from ..ctx_core import CtxCore
-
-    core = CtxCore()
-    ctx_path = core.get_active_ctx_path()
-
-    if not ctx_path:
-        click.echo("❌ No active context. Run 'ctx new' first.")
-        return
-
     manager = NotebookManager(ctx_path)
     success, message = manager.add(key, value)
 
@@ -238,17 +230,9 @@ def add(key, value):
 
 @cli.command()
 @click.argument("key")
-def get(key):
+@require_context_llemur
+def get(ctx_path, key):
     """Get entry from notebook"""
-    from ..ctx_core import CtxCore
-
-    core = CtxCore()
-    ctx_path = core.get_active_ctx_path()
-
-    if not ctx_path:
-        click.echo("❌ No active context")
-        return
-
     manager = NotebookManager(ctx_path)
     entry = manager.get(key)
 
@@ -260,17 +244,9 @@ def get(key):
 
 
 @cli.command("list")
-def list_entries():
+@require_context_llemur
+def list_entries(ctx_path):
     """List all notebook entries"""
-    from ..ctx_core import CtxCore
-
-    core = CtxCore()
-    ctx_path = core.get_active_ctx_path()
-
-    if not ctx_path:
-        click.echo("❌ No active context")
-        return
-
     manager = NotebookManager(ctx_path)
     notebook = manager.list_all()
 
@@ -291,17 +267,9 @@ def list_entries():
 
 @cli.command()
 @click.argument("key")
-def delete(key):
+@require_context_llemur
+def delete(ctx_path, key):
     """Delete entry from notebook"""
-    from ..ctx_core import CtxCore
-
-    core = CtxCore()
-    ctx_path = core.get_active_ctx_path()
-
-    if not ctx_path:
-        click.echo("❌ No active context")
-        return
-
     if not click.confirm(f"Delete '{key}' from notebook?"):
         return
 
@@ -315,30 +283,14 @@ def delete(key):
 
 
 @cli.command()
-def export():
+@require_context_llemur
+def export(ctx_path):
     """Export notebook as text"""
-    from ..ctx_core import CtxCore
-
-    core = CtxCore()
-    ctx_path = core.get_active_ctx_path()
-
-    if not ctx_path:
-        click.echo("❌ No active context")
-        return
-
     manager = NotebookManager(ctx_path)
     output = manager.export()
 
     click.echo(output)
-
-    # Clipboard integration - graceful fallback if pyperclip unavailable
-    try:
-        import pyperclip
-
-        pyperclip.copy(output)
-        click.echo("\n✅ Copied to clipboard!")
-    except ImportError:
-        click.echo("\n💡 Install pyperclip to auto-copy: pip install pyperclip")
+    copy_to_clipboard(output)
 
 
 if __name__ == "__main__":

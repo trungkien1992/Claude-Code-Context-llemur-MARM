@@ -109,14 +109,25 @@ wheels = [
 
 [[package]]
 name = "claude-code-context-llemur"
-version = "0.1.0"
+version = "2.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "context-llemur" },
+    { name = "gitpython" },
+]
+
+[package.optional-dependencies]
+memory = [
+    { name = "pyperclip" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "context-llemur", specifier = ">=0.2.2" }]
+requires-dist = [
+    { name = "context-llemur", specifier = ">=0.2.2" },
+    { name = "gitpython", specifier = ">=3.1.45" },
+    { name = "pyperclip", marker = "extra == 'memory'", specifier = ">=1.8.0" },
+]
+provides-extras = ["memory"]
 
 [[package]]
 name = "click"

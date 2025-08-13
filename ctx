@@ -1,0 +1,4 @@
+#!/bin/bash
+# Simple wrapper for ctx commands
+cd "$(dirname "$0")"
+uv run python main.py "$@"

@@ -8,24 +8,32 @@ This enhancement adds MARM's memory innovations to Context-Llemur:
 
 ## New Commands
 
+### CLI Usage
+The system provides a convenient wrapper script for easier command execution:
+```bash
+./ctx <command>                   # Use the ctx wrapper script
+# Alternative: uv run python main.py <command>
+```
+
 ### Notebook Management
 ```bash
-ctx notebook add <key> <value>    # Add entry
-ctx notebook get <key>            # Get entry
-ctx notebook list                 # List all entries
-ctx notebook delete <key>         # Delete entry
-ctx notebook export               # Export as text
+./ctx notebook add <key> <value>    # Add entry
+./ctx notebook get <key>            # Get entry
+./ctx notebook list                 # List all entries
+./ctx notebook delete <key>         # Delete entry
+./ctx notebook export               # Export as text
 ```
 
 ### Context Compilation
 ```bash
-ctx compile [name]                # Create snapshot
-ctx compile --fields key1,key2    # Compile specific fields
-ctx compile list                  # List all compilations
-ctx compile load <name>           # Load compilation
-ctx compile delete <name>         # Delete compilation
-ctx compile export-md <name>      # Export as markdown
-ctx compile import-artifacts <file> # Import Claude artifacts
+./ctx compile [name]                # Create snapshot
+./ctx compile --fields key1,key2    # Compile specific fields
+./ctx compile list                  # List all compilations
+./ctx compile load <name>           # Load compilation
+./ctx compile delete <name>         # Delete compilation
+./ctx compile export-md <name>      # Export as markdown
+./ctx compile import-artifacts <file> # Import Claude artifacts
+./ctx compile snapshot              # Create quick snapshot
 ```
 
 ### Claude Integration
@@ -159,18 +167,31 @@ python src/claude_integration.py
 
 ## New Features Added
 
+### CLI Convenience Improvements
+Created a convenient wrapper script to simplify command execution:
+- **ctx wrapper script**: Use `./ctx` instead of `uv run python main.py`
+- **Dependency management**: Automatic handling of Python dependencies via uv
+- **Shared utilities**: Refactored CLI setup into reusable utilities
+- **Error handling**: Standardized error messages across all commands
+
+Benefits of the CLI refactor:
+- Eliminated 150+ lines of duplicate code across 5 files
+- Centralized context resolution logic
+- Standardized emoji-based error messaging
+- Shared clipboard utilities
+
 ### Markdown Export
 Export any compilation as structured markdown for documentation:
 ```bash
-ctx compile export-md my-snapshot
-ctx compile export-md my-snapshot --output docs/context.md
+./ctx compile export-md my-snapshot
+./ctx compile export-md my-snapshot --output docs/context.md
 ```
 
 ### Claude Artifacts Import
 Import Claude-generated artifacts back into the MARM system:
 ```bash
 # Save Claude artifacts as JSON file, then:
-ctx compile import-artifacts my-artifacts.json
+./ctx compile import-artifacts my-artifacts.json
 ```
 
 This creates a new compilation with:

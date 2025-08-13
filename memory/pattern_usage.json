@@ -1,0 +1,16 @@
+{
+  "command_pattern": {
+    "total_uses": 1,
+    "successful_uses": 1,
+    "failed_uses": 0,
+    "modified_uses": 0,
+    "average_effectiveness": 0.9,
+    "evolution": [
+      {
+        "timestamp": "2025-08-13T10:36:30.163904",
+        "outcome": "success",
+        "effectiveness": 0.9
+      }
+    ]
+  }
+}

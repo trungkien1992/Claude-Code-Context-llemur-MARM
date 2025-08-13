@@ -20,9 +20,14 @@ from typing import Any, Dict, List, Optional
 # @fetch https://click.palletsprojects.com/en/8.1.x/
 # CLI framework for command-line interface
 import click
+from ..cli_utils import require_context_llemur, copy_to_clipboard
 # @fetch https://gitpython.readthedocs.io/en/stable/reference.html#git.repo.base.Repo
 # Git repository operations for context information
-from git import Repo
+try:
+    from git import Repo
+    HAS_GIT = True
+except ImportError:
+    HAS_GIT = False
 
 
 class ContextCompiler:
@@ -87,25 +92,28 @@ class ContextCompiler:
             compilation["notebook"] = json.loads(notebook_path.read_text())
 
         # 3. Collect git information
-        try:
-            repo = Repo(self.ctx_path)
-            compilation["git_info"] = {
-                "current_branch": repo.active_branch.name,
-                "recent_commits": [],
-            }
+        if HAS_GIT:
+            try:
+                repo = Repo(self.ctx_path)
+                compilation["git_info"] = {
+                    "current_branch": repo.active_branch.name,
+                    "recent_commits": [],
+                }
 
-            # Get last 10 commits
-            for commit in list(repo.iter_commits("HEAD", max_count=10)):
-                compilation["git_info"]["recent_commits"].append(
-                    {
-                        "sha": commit.hexsha[:7],
-                        "message": commit.message.strip(),
-                        "author": str(commit.author),
-                        "date": commit.committed_datetime.isoformat(),
-                    }
-                )
-        except Exception as e:
-            compilation["git_info"]["error"] = str(e)
+                # Get last 10 commits
+                for commit in list(repo.iter_commits("HEAD", max_count=10)):
+                    compilation["git_info"]["recent_commits"].append(
+                        {
+                            "sha": commit.hexsha[:7],
+                            "message": commit.message.strip(),
+                            "author": str(commit.author),
+                            "date": commit.committed_datetime.isoformat(),
+                        }
+                    )
+            except Exception as e:
+                compilation["git_info"] = {"error": str(e)}
+        else:
+            compilation["git_info"] = {"error": "Git not available"}
 
         # 4. Add metadata
         compilation["metadata"] = {
@@ -149,14 +157,14 @@ class ContextCompiler:
         @pattern Template Method https://refactoring.guru/design-patterns/template-method
         """
         block = "=" * 70 + "\n"
-        block += "=� PORTABLE CONTEXT BLOCK\n"
-        block += f"=� Created: {compilation.get('created', 'Unknown')}\n"
-        block += f"=� Name: {compilation.get('name', 'Unknown')}\n"
+        block += "📋 PORTABLE CONTEXT BLOCK\n"
+        block += f"📋 Created: {compilation.get('created', 'Unknown')}\n"
+        block += f"📋 Name: {compilation.get('name', 'Unknown')}\n"
         block += "=" * 70 + "\n\n"
 
         # Static files section
         if "static_files" in compilation and compilation["static_files"]:
-            block += "=� STATIC CONTEXT FILES:\n"
+            block += "📋 STATIC CONTEXT FILES:\n"
             block += "-" * 40 + "\n"
             for filename, content in compilation["static_files"].items():
                 # Show first 200 chars of each file
@@ -166,7 +174,7 @@ class ContextCompiler:
 
         # Notebook entries section
         if "notebook" in compilation and compilation["notebook"]:
-            block += "=� NOTEBOOK ENTRIES:\n"
+            block += "📋 NOTEBOOK ENTRIES:\n"
             block += "-" * 40 + "\n"
             for key, entry in compilation["notebook"].items():
                 value = entry["value"] if isinstance(entry, dict) else entry
@@ -189,14 +197,14 @@ class ContextCompiler:
         # Metadata section
         if "metadata" in compilation:
             meta = compilation["metadata"]
-            block += "=� METADATA:\n"
+            block += "📋 METADATA:\n"
             block += "-" * 40 + "\n"
             block += f"Notebook Entries: {meta.get('total_notebook_entries', 0)}\n"
             block += f"Static Files: {meta.get('total_static_files', 0)}\n"
             block += f"Total Size: {meta.get('compilation_size', 0)} bytes\n"
 
         block += "\n" + "=" * 70 + "\n"
-        block += "=� To load this context: ctx load-compilation <name>\n"
+        block += "📋 To load this context: ctx load-compilation <name>\n"
         block += "=" * 70
 
         return block
@@ -440,18 +448,9 @@ def cli():
 @cli.command()
 @click.argument("name", required=False)
 @click.option("--fields", help="Comma-separated fields to include")
-def compile(name, fields):
+@require_context_llemur
+def compile(ctx_path, name, fields):
     """Compile current context into portable snapshot"""
-    # Integration point: depends on ctx_core for context path resolution
-    from ..ctx_core import CtxCore
-
-    core = CtxCore()
-    ctx_path = core.get_active_ctx_path()
-
-    if not ctx_path:
-        click.echo("L No active context. Run 'ctx new' first.")
-        return
-
     compiler = ContextCompiler(ctx_path)
 
     fields_list = fields.split(",") if fields else None
@@ -461,29 +460,15 @@ def compile(name, fields):
     reseed_block = compiler.create_reseed_block(compilation)
     click.echo(reseed_block)
 
-    # Clipboard integration - graceful fallback if pyperclip unavailable
-    try:
-        import pyperclip
-
-        pyperclip.copy(reseed_block)
-        click.echo("\n Reseed block copied to clipboard!")
-    except ImportError:
-        click.echo("\n=� Install pyperclip to auto-copy: pip install pyperclip")
+    # Copy to clipboard using shared utility
+    copy_to_clipboard(reseed_block, "✅ Reseed block copied to clipboard!")
 
 
 @cli.command()
 @click.argument("name")
-def load(name):
+@require_context_llemur
+def load(ctx_path, name):
     """Load a previously compiled context"""
-    from ..ctx_core import CtxCore
-
-    core = CtxCore()
-    ctx_path = core.get_active_ctx_path()
-
-    if not ctx_path:
-        click.echo("L No active context")
-        return
-
     compiler = ContextCompiler(ctx_path)
     success, message, compilation = compiler.load(name)
 
@@ -493,29 +478,21 @@ def load(name):
             reseed_block = compiler.create_reseed_block(compilation)
             click.echo("\n" + reseed_block)
     else:
-        click.echo(f"L {message}")
+        click.echo(f"❌ {message}")
 
 
 @cli.command("list")
-def list_compilations():
+@require_context_llemur
+def list_compilations(ctx_path):
     """List all available compilations"""
-    from ..ctx_core import CtxCore
-
-    core = CtxCore()
-    ctx_path = core.get_active_ctx_path()
-
-    if not ctx_path:
-        click.echo("L No active context")
-        return
-
     compiler = ContextCompiler(ctx_path)
     compilations = compiler.list_compilations()
 
     if not compilations:
-        click.echo("=� No compilations found")
+        click.echo("📋 No compilations found")
         return
 
-    click.echo("=� Available Compilations:\n")
+    click.echo("📋 Available Compilations:\n")
     for comp in compilations:
         click.echo(f"• {comp['name']}")
         click.echo(f"  Created: {comp['created']}")
@@ -527,17 +504,9 @@ def list_compilations():
 
 @cli.command()
 @click.argument("name")
-def delete(name):
+@require_context_llemur
+def delete(ctx_path, name):
     """Delete a compilation"""
-    from ..ctx_core import CtxCore
-
-    core = CtxCore()
-    ctx_path = core.get_active_ctx_path()
-
-    if not ctx_path:
-        click.echo("L No active context")
-        return
-
     if not click.confirm(f"Delete compilation '{name}'?"):
         return
 
@@ -547,31 +516,19 @@ def delete(name):
     if success:
         click.echo(f" {message}")
     else:
-        click.echo(f"L {message}")
+        click.echo(f"❌ {message}")
 
 
 @cli.command()
 @click.argument("name")
 @click.option("--output", "-o", help="Output file path")
-def export_md(name, output):
+@require_context_llemur
+def export_md(ctx_path, name, output):
     """Export compilation as markdown
 
     @implement: Load compilation and convert to markdown format with proper CLI integration
     @ai-context: Provides markdown export for documentation and sharing
     """
-    try:
-        from ..ctx_core import CtxCore
-
-        core = CtxCore()
-        ctx_path = core.get_active_ctx_path()
-    except ImportError:
-        click.echo("❌ context-llemur not available")
-        return
-
-    if not ctx_path:
-        click.echo("❌ No active context")
-        return
-
     compiler = ContextCompiler(ctx_path)
     compilation_path = compiler.compilations_dir / f"{name}.json"
 
@@ -590,14 +547,7 @@ def export_md(name, output):
         else:
             click.echo(markdown)
 
-        # Clipboard integration
-        try:
-            import pyperclip
-
-            pyperclip.copy(markdown)
-            click.echo("\n✅ Markdown copied to clipboard!")
-        except ImportError:
-            click.echo("\n💡 Install pyperclip to auto-copy: pip install pyperclip")
+        copy_to_clipboard(markdown, "✅ Markdown copied to clipboard!")
 
     except Exception as e:
         click.echo(f"❌ Error exporting: {e}")
@@ -605,25 +555,13 @@ def export_md(name, output):
 
 @cli.command()
 @click.argument("artifacts_file", type=click.Path(exists=True))
-def import_artifacts(artifacts_file):
+@require_context_llemur
+def import_artifacts(ctx_path, artifacts_file):
     """Import context from Claude artifacts JSON file
 
     @implement: Read artifacts file and import into MARM system with validation
     @ai-context: Enables Claude artifacts to be imported back into memory system
     """
-    try:
-        from ..ctx_core import CtxCore
-
-        core = CtxCore()
-        ctx_path = core.get_active_ctx_path()
-    except ImportError:
-        click.echo("❌ context-llemur not available")
-        return
-
-    if not ctx_path:
-        click.echo("❌ No active context. Run 'ctx new' first.")
-        return
-
     try:
         artifacts_json = Path(artifacts_file).read_text()
         compiler = ContextCompiler(ctx_path)

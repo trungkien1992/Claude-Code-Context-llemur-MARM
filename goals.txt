@@ -1,0 +1,13 @@
+## Goals for Claude Code Context llemur
+
+1. ✅ Successfully refactor CLI setup into shared utilities  
+2. ✅ Eliminate duplicate context path resolution logic across multiple files
+3. ✅ Standardize error messaging and clipboard handling
+4. 🎯 Test the MARM memory system on this codebase itself
+5. 📝 Demonstrate notebook and compilation features working
+
+## Success Criteria
+- All CLI commands use shared utilities
+- No duplicate code patterns
+- Consistent user experience across all commands
+- Working memory system for development context

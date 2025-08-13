@@ -18,6 +18,7 @@ from datetime import datetime
 from pathlib import Path
 
 import click
+from .cli_utils import get_context_path_with_fallback, echo_no_context_warning, copy_to_clipboard
 
 
 def prepare_claude_context():
@@ -35,22 +36,20 @@ def prepare_claude_context():
     output += "CLAUDE CODE CONTEXT\n"
     output += "=" * 70 + "\n\n"
 
-    # Try to get active context, but work without it
-    ctx_path = None
+    # Get context path with fallback to current directory
+    ctx_path = get_context_path_with_fallback()
+    
+    # Check if we're using fallback
     try:
         from context_llemur import CtxCore
-
         core = CtxCore()
-        ctx_path = core.get_active_ctx_path()
+        active_path = core.get_active_ctx_path()
+        if not active_path:
+            echo_no_context_warning()
+            output += "⚠️  context-llemur not available - showing project structure instead\n\n"
     except ImportError:
-        output += (
-            "⚠️  context-llemur not available - showing project structure instead\n\n"
-        )
-        ctx_path = Path.cwd()
-
-    if not ctx_path:
-        output += "❌ No active context\n"
-        return output
+        echo_no_context_warning()
+        output += "⚠️  context-llemur not available - showing project structure instead\n\n"
 
     # 1. Static files (goals.txt, rules.txt)
     for filename in ["goals.txt", "rules.txt"]:
@@ -129,13 +128,7 @@ def claude(copy):
     click.echo(context)
 
     if copy:
-        try:
-            import pyperclip
-
-            pyperclip.copy(context)
-            click.echo("\n✅ Copied to clipboard!")
-        except ImportError:
-            click.echo("\n💡 Install pyperclip: pip install pyperclip")
+        copy_to_clipboard(context)
 
 
 if __name__ == "__main__":

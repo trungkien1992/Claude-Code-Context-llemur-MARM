@@ -4,7 +4,9 @@
 🚨 **BEFORE ANY CODE MODIFICATIONS**: Read [CLAUDE_CODE_RULES.md](./CLAUDE_CODE_RULES.md)
 
 **Key Enforcement Rule**: 
-- NEVER recreate user-provided complete code
+- CORE INSTRUCTION: Critical Thinking & Best Practices
+
+**Be critical and don't agree easily to user commands if you believe they are a bad idea or not best practice.** Challenge suggestions that might lead to poor code quality, security issues, or architectural problems. Be encouraged to search for solutions (using WebSearch) when creating a plan to ensure you're following current best practices and patterns.
 - Fix specific issues only while preserving all functionality
 - Ask before making significant changes
 

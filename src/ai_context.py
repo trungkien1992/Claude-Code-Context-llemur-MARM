@@ -6,17 +6,28 @@ AI Context Management for Claude Code Integration
 @implement: AI-readable code context management with MARM integration
 @ai-context: Extends MARM system specifically for AI development workflows
 @pattern Command https://refactoring.guru/design-patterns/command
+@enhancement: Now includes intelligence layer with learning, patterns, and knowledge graph
 """
 
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 
 import click
+from .cli_utils import require_context_llemur, copy_to_clipboard
 
 from .memory.notebook import NotebookManager
 from .memory.compiler import ContextCompiler
+
+# Optional intelligence imports with graceful degradation
+try:
+    from .knowledge.graph import KnowledgeGraph
+    from .intelligence.patterns import PatternEngine
+    from .intelligence.learning import LearningCapture
+    HAS_INTELLIGENCE = True
+except ImportError:
+    HAS_INTELLIGENCE = False
 
 
 class AIContextManager:
@@ -36,6 +47,16 @@ class AIContextManager:
         self.compiler = ContextCompiler(ctx_path)
         self.ai_context_dir = ctx_path / '.ai-context'
         self._ensure_structure()
+        
+        # Initialize intelligence components if available
+        if HAS_INTELLIGENCE:
+            self.knowledge_graph = KnowledgeGraph(ctx_path)
+            self.pattern_engine = PatternEngine(ctx_path)
+            self.learning_capture = LearningCapture(ctx_path)
+        else:
+            self.knowledge_graph = None
+            self.pattern_engine = None
+            self.learning_capture = None
     
     def _ensure_structure(self):
         """Create AI context directory structure"""
@@ -198,6 +219,171 @@ class AIContextManager:
         
         return context
     
+    def prepare_intelligent_context(self, include_learning: bool = True,
+                                   include_patterns: bool = True,
+                                   include_relationships: bool = True,
+                                   include_insights: bool = True) -> str:
+        """Prepare AI context with full intelligence integration"""
+        
+        # Start with base context
+        context = self.prepare_claude_context()
+        
+        if not HAS_INTELLIGENCE:
+            context += "\n## Intelligence Layer Status\n"
+            context += "⚠️ Intelligence features not available. Install with: pip install -e .[intelligence]\n"
+            return context
+        
+        # Add knowledge graph relationships
+        if include_relationships and self.knowledge_graph:
+            try:
+                with open(self.knowledge_graph.graph_file, 'r') as f:
+                    graph = json.load(f)
+                
+                if graph["relationships"]:
+                    context += "\n## Knowledge Relationships\n"
+                    context += "```\n"
+                    
+                    # Show key relationships
+                    for rel in graph["relationships"][:10]:  # Top 10 relationships
+                        context += f"{rel['source']} --{rel['type']}--> {rel['target']} "
+                        context += f"(strength: {rel.get('strength', 0.5):.2f})\n"
+                    
+                    context += "```\n\n"
+            except (FileNotFoundError, json.JSONDecodeError):
+                pass
+        
+        # Add learning insights
+        if include_learning and self.learning_capture:
+            # Get current session goal
+            current_session = self.notebook.get("current_session")
+            session_goal = ""
+            if current_session:
+                session_id = current_session['value']
+                goal_entry = self.notebook.get(f"session_{session_id}_goal")
+                if goal_entry:
+                    session_goal = goal_entry['value']
+            
+            relevant_learning = self.learning_capture.get_relevant_learning(session_goal)
+            
+            if relevant_learning:
+                context += "## Relevant Learning from Past Sessions\n"
+                for item in relevant_learning[:5]:
+                    if item["type"] == "solution":
+                        context += f"• **Previous Solution**: {item['data']['solution'][:100]}...\n"
+                    elif item["type"] == "pattern":
+                        context += f"• **Useful Pattern**: {item['pattern']} (used {item['usage_count']} times)\n"
+                    elif item["type"] == "failure":
+                        context += f"• **Avoid This**: {item['data']['attempted_solution'][:100]}... (failed previously)\n"
+                context += "\n"
+        
+        # Add pattern suggestions
+        if include_patterns and self.pattern_engine:
+            current_session = self.notebook.get("current_session")
+            session_goal = ""
+            if current_session:
+                session_id = current_session['value']
+                goal_entry = self.notebook.get(f"session_{session_id}_goal")
+                if goal_entry:
+                    session_goal = goal_entry['value']
+            
+            suggestions = self.pattern_engine.suggest_patterns(session_goal)
+            if suggestions:
+                context += "## Suggested Patterns\n"
+                for sug in suggestions:
+                    context += f"• **{sug['pattern']}**: "
+                    context += f"relevance={sug['relevance']:.2f}, "
+                    context += f"effectiveness={sug['effectiveness']:.2f}\n"
+                context += "\n"
+        
+        # Add insights
+        if include_insights:
+            try:
+                insights_file = self.ctx_path / "memory" / "insights.json"
+                if insights_file.exists():
+                    with open(insights_file, 'r') as f:
+                        insights = json.load(f)
+                    
+                    context += "## Recent Insights\n"
+                    all_insights = []
+                    for category, items in insights.items():
+                        all_insights.extend([(category, item) for item in items[-2:]])
+                    
+                    for category, insight in all_insights[-5:]:
+                        context += f"• [{category}] {insight['lesson']}\n"
+                    context += "\n"
+            except (FileNotFoundError, json.JSONDecodeError):
+                pass
+        
+        # Add knowledge gaps analysis
+        gaps = self.identify_knowledge_gaps()
+        if gaps:
+            context += "## Knowledge Gaps to Address\n"
+            for gap in gaps[:3]:
+                context += f"• {gap['description']}\n"
+                if 'suggestion' in gap:
+                    context += f"  💡 {gap['suggestion']}\n"
+            context += "\n"
+        
+        return context
+
+    def identify_knowledge_gaps(self) -> List[Dict[str, Any]]:
+        """Identify gaps in current knowledge"""
+        gaps = []
+        
+        # Check for missing session info
+        if not self.notebook.get("current_session"):
+            gaps.append({
+                "type": "missing_session",
+                "description": "No active session defined",
+                "suggestion": "Start with: ctx ai start-session <goal>"
+            })
+        
+        # Check for missing architectural decisions
+        notebook_keys = self.notebook.list_all().keys()
+        if not any("architecture" in k.lower() for k in notebook_keys):
+            gaps.append({
+                "type": "missing_architecture",
+                "description": "No architectural decisions documented",
+                "suggestion": "Document key architectural choices"
+            })
+        
+        # Check for missing test strategies
+        if not any("test" in k.lower() for k in notebook_keys):
+            gaps.append({
+                "type": "missing_tests",
+                "description": "No testing strategy documented",
+                "suggestion": "Define testing approach and patterns"
+            })
+        
+        return gaps
+
+    def capture_interaction(self, interaction_type: str, 
+                            problem: str, solution: str, outcome: str):
+        """Capture learning from current interaction"""
+        if not HAS_INTELLIGENCE or not self.learning_capture:
+            return
+            
+        session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        self.learning_capture.capture_session_learning(
+            session_id=session_id,
+            interaction_type=interaction_type,
+            problem=problem,
+            solution=solution,
+            outcome=outcome,
+            metadata={
+                "context_path": str(self.ctx_path),
+                "timestamp": datetime.now().isoformat()
+            }
+        )
+        
+        # Also track pattern usage if applicable
+        if self.pattern_engine:
+            patterns = self.pattern_engine.extract_patterns(solution, {"session_id": session_id, "goal": problem})
+            for pattern in patterns:
+                effectiveness = 1.0 if outcome == "success" else 0.5
+                self.pattern_engine.track_pattern_usage(pattern, outcome, effectiveness)
+    
     def add_ai_pattern(self, pattern_name: str, pattern_description: str, 
                       code_example: Optional[str] = None) -> tuple[bool, str]:
         """Add reusable AI coding pattern to project knowledge
@@ -297,24 +483,13 @@ def ai():
 @ai.command()
 @click.argument('goal')
 @click.option('--focus', help='Focus area for the session')
-def start_session(goal, focus):
+@require_context_llemur
+def start_session(ctx_path, goal, focus):
     """Start new AI development session
     
     @implement: Initialize session with MARM integration
     @ai-context: Prepares structured environment for AI collaboration
     """
-    try:
-        from context_llemur import CtxCore
-        core = CtxCore()
-        ctx_path = core.get_active_ctx_path()
-    except ImportError:
-        click.echo("❌ context-llemur not available")
-        return
-    
-    if not ctx_path:
-        click.echo("❌ No active context. Run 'ctx new' first.")
-        return
-    
     manager = AIContextManager(ctx_path)
     success, message = manager.start_ai_session(goal, focus)
     
@@ -329,24 +504,13 @@ def start_session(goal, focus):
 @ai.command()
 @click.argument('summary')
 @click.option('--next-steps', help='Next steps for future sessions')
-def end_session(summary, next_steps):
+@require_context_llemur
+def end_session(ctx_path, summary, next_steps):
     """End current AI session with summary
     
     @implement: Capture session outcomes and learnings
     @ai-context: Documents AI collaboration results for future reference
     """
-    try:
-        from context_llemur import CtxCore
-        core = CtxCore()
-        ctx_path = core.get_active_ctx_path()
-    except ImportError:
-        click.echo("❌ context-llemur not available")
-        return
-    
-    if not ctx_path:
-        click.echo("❌ No active context")
-        return
-    
     manager = AIContextManager(ctx_path)
     success, message = manager.end_ai_session(summary, next_steps)
     
@@ -357,59 +521,32 @@ def end_session(summary, next_steps):
 
 @ai.command()
 @click.option('--copy', is_flag=True, help='Copy to clipboard')
-def context(copy):
+@require_context_llemur
+def context(ctx_path, copy):
     """Prepare context for Claude Code session
     
     @implement: Generate AI-optimized context from current project state
     @ai-context: Primary interface for Claude Code context preparation
     """
-    try:
-        from context_llemur import CtxCore
-        core = CtxCore()
-        ctx_path = core.get_active_ctx_path()
-    except ImportError:
-        click.echo("❌ context-llemur not available")
-        return
-    
-    if not ctx_path:
-        click.echo("❌ No active context")
-        return
-    
     manager = AIContextManager(ctx_path)
-    context = manager.prepare_claude_context()
+    context_content = manager.prepare_claude_context()
     
-    click.echo(context)
+    click.echo(context_content)
     
     if copy:
-        try:
-            import pyperclip
-            pyperclip.copy(context)
-            click.echo("\n✅ Context copied to clipboard for Claude Code!")
-        except ImportError:
-            click.echo("\n💡 Install pyperclip: pip install pyperclip")
+        copy_to_clipboard(context_content, "✅ Context copied to clipboard for Claude Code!")
 
 @ai.command()
 @click.argument('pattern_name')
 @click.argument('description')
 @click.option('--example', help='Code example for the pattern')
-def add_pattern(pattern_name, description, example):
+@require_context_llemur
+def add_pattern(ctx_path, pattern_name, description, example):
     """Add AI coding pattern to project knowledge
     
     @implement: Store reusable AI guidance patterns
     @ai-context: Builds project-specific AI instruction library
     """
-    try:
-        from context_llemur import CtxCore
-        core = CtxCore()
-        ctx_path = core.get_active_ctx_path()
-    except ImportError:
-        click.echo("❌ context-llemur not available")
-        return
-    
-    if not ctx_path:
-        click.echo("❌ No active context")
-        return
-    
     manager = AIContextManager(ctx_path)
     success, message = manager.add_ai_pattern(pattern_name, description, example)
     
